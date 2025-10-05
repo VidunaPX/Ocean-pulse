@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ocean Pulse</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #006994 0%, #004d7a 25%, #002635 50%, #001f3f 75%, #003d5b 100%);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Top Bar Container */
+        .top-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        /* Logo - CONSTANT SIZE */
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease;
+            min-width: 140px;
+            max-width: 400px;
+            min-height: 60px;
+            max-height: 60px;
+            pointer-events: all;
+        }
+
+        .logo:hover {
+            transform: scale(1.05);
+        }
+
+        .logo-icon {
+            width: 40px !important;
+            height: 40px !important;
+            min-width: 40px !important;
+            max-width: 40px !important;
+            min-height: 40px !important;
+            max-height: 40px !important;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 20px !important;
+            line-height: 40px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .logo-text {
+            color: white;
+            font-size: 18px !important;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Globe Selector Dropdown */
+        .globe-selector {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            pointer-events: all;
+            position: relative;
+        }
+
+        .globe-selector:hover {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .globe-selector select {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 5px 25px 5px 10px;
+            cursor: pointer;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 200px;
+        }
+
+        .globe-selector select option {
+            background: #004d7a;
+            color: white;
+            padding: 5px;
+        }
+
+        .globe-selector::after {
+            content: '▼';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            pointer-events: none;
+            font-size: 12px;
+        }
+
+        /* 3D Canvas Container */
+        #globe-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            height: 400px;
+            z-index: 100;
+        }
+
+        /* Sliding Panels */
+        .panel {
+            position: absolute;
+            background: rgba(0, 77, 122, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 172, 193, 0.3);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 200;
+        }
+
+        .panel-trigger {
+            position: absolute;
+            background: linear-gradient(135deg, #00acc1, #00838f);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 0 10px 10px 0;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-trigger:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(0, 172, 193, 0.5);
+        }
+
+        /* Left Panel */
+        .left-panel {
+            left: 0;
+            top: 50%;
+            transform: translateX(-100%) translateY(-50%);
+            width: 350px;
+            height: 500px;
+            border-radius: 0 20px 20px 0;
+            padding: 60px 20px 20px;
+        }
+
+        .left-panel.active {
+            transform: translateX(0) translateY(-50%);
+        }
+
+        .left-panel .panel-trigger {
+            right: -120px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-radius: 0 10px 10px 0;
+        }
+
+        .left-panel .panel-trigger:hover {
+            transform: translateY(-50%) translateX(5px);
+        }
+
+        .image-gallery {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            height: 100%;
+            justify-content: flex-start;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        /* Custom scrollbar styling */
+        .image-gallery::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .image-gallery::-webkit-scrollbar-track {
+            background: rgba(0, 131, 143, 0.1);
+            border-radius: 10px;
+        }
+
+        .image-gallery::-webkit-scrollbar-thumb {
+            background: rgba(0, 172, 193, 0.5);
+            border-radius: 10px;
+        }
+
+        .image-gallery::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 172, 193, 0.7);
+        }
+
+        .image-item {
+            background: rgba(0, 131, 143, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(0, 172, 193, 0.2);
+            flex-shrink: 0;
+        }
+
+        .image-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(0, 172, 193, 0.3);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+
+        .image-caption {
+            padding: 15px;
+            color: #e0f7fa;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        /* Right Panel */
+        .right-panel {
+            right: 0;
+            top: 50%;
+            transform: translateX(100%) translateY(-50%);
+            width: 350px;
+            height: 550px;
+            border-radius: 20px 0 0 20px;
+            padding: 60px 20px 20px;
+        }
+
+        .right-panel.active {
+            transform: translateX(0) translateY(-50%);
+        }
+
+        .right-panel .panel-trigger {
+            left: -120px;
+            top: 50%;
+            transform: translateY(-50%);
+            border-radius: 10px 0 0 10px;
+        }
+
+        .right-panel .panel-trigger:hover {
+            transform: translateY(-50%) translateX(-5px);
+        }
+
+        .images-container {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .images-title {
+            color: #e0f7fa;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            background: linear-gradient(135deg, #4dd0e1, #00acc1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            flex-shrink: 0;
+        }
+
+        /* Updated: Vertical column layout for images */
+        .images-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            align-items: center;
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        /* Custom scrollbar styling */
+        .images-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .images-grid::-webkit-scrollbar-track {
+            background: rgba(0, 131, 143, 0.1);
+            border-radius: 10px;
+        }
+
+        .images-grid::-webkit-scrollbar-thumb {
+            background: rgba(0, 172, 193, 0.5);
+            border-radius: 10px;
+        }
+
+        .images-grid::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 172, 193, 0.7);
+        }
+
+        .image-only {
+            background: rgba(0, 131, 143, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 280px;
+            height: 120px;
+            border: 1px solid rgba(0, 172, 193, 0.2);
+            flex-shrink: 0;
+        }
+
+        .image-only:hover {
+            background: rgba(0, 131, 143, 0.2);
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(0, 172, 193, 0.3);
+        }
+
+        .image-only img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Bottom Panel */
+        .bottom-panel {
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            width: 600px;
+            height: 200px;
+            border-radius: 20px 20px 0 0;
+            padding: 60px 30px 20px;
+        }
+
+        .bottom-panel.active {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .bottom-panel .panel-trigger {
+            top: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 10px 10px 0 0;
+        }
+
+        .bottom-panel .panel-trigger:hover {
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        .legend-container {
+            color: #e0f7fa;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .legend-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .legend-items {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 131, 143, 0.1);
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 172, 193, 0.2);
+        }
+
+        .legend-item:hover {
+            background: rgba(0, 131, 143, 0.2);
+            transform: scale(1.05);
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-text {
+            font-size: 14px;
+            color: #e0f7fa;
+        }
+
+        /* Icons */
+        .icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        /* Loading indicator */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #4dd0e1;
+            font-size: 18px;
+            z-index: 50;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #globe-container {
+                width: 300px;
+                height: 300px;
+            }
+
+            .left-panel, .right-panel {
+                width: 280px;
+            }
+
+            .bottom-panel {
+                width: 90%;
+            }
+
+            .image-only {
+                max-width: 240px;
+                height: 100px;
+            }
+
+            .top-bar {
+                padding: 0 10px;
+            }
+
+            .globe-selector select {
+                width: 150px;
+                font-size: 14px;
+            }
+
+            .logo-text {
+                font-size: 16px !important;
+            }
+        }
+
+        /* Ocean wave animation */
+        @keyframes wave {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .logo:hover .logo-icon {
+            animation: wave 1s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Bar Container -->
+    <div class="top-bar">
+        <!-- Logo -->
+        <div class="logo">
+            <div class="logo-icon">
+                <img src="./Logo.png" alt="Logo">
+            </div>
+            <div class="logo-text">Ocean Pulse</div>
+        </div>
+
+        <!-- Globe Selector Dropdown -->
+        <div class="globe-selector">
+            <select id="globeSelect">
+                <option value="texture1">1 Month</option>
+                <option value="texture2">2 Months</option>
+                <option value="texture3">3 Months</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- 3D Globe Container -->
+    <div id="globe-container">
+        <div class="loading">Loading Globe...</div>
+    </div>
+
+    <!-- Left Panel -->
+    <div class="panel left-panel" id="leftPanel">
+        <div class="panel-trigger" onclick="togglePanel('left')">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+            Predictions
+        </div>
+        <div class="image-gallery">
+            <h2 class="images-title">Predictions</h2>
+            <div class="image-item">
+                <img src="./predicted_sst_anomaly_month3.png" alt="Ocean Scene">
+            </div>
+            <div class="image-item">
+                <img src="./marine_heatwave_map.png" alt="Coral Reef">
+            </div>
+            <div class="image-item">
+                <img src="./plastic_drift_map.png" alt="Coral Reef">
+            </div>
+            <div class="image-item">
+                <img src="./fish_migration_map.png" alt="Coral Reef">
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="panel right-panel" id="rightPanel">
+        <div class="panel-trigger" onclick="togglePanel('right')">
+            Statistics
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+        </div>
+        <div class="images-container">
+            <h2 class="images-title">Statistics</h2>
+            <div class="images-grid">
+                <div class="image-only">
+                    <img src="./global_health_map.png" alt="Marine Life">
+                </div>
+                <div class="image-only">
+                    <img src="./fish_migration_analysis.png" alt="Marine Life">
+                </div>
+                <div class="image-only">
+                    <img src="./health_score_gauge.png" alt="Marine Life">
+                </div>
+                <div class="image-only">
+                    <img src="./carbon_leak_map.png" alt="Ocean Waves">
+                </div>
+                <div class="image-only">
+                    <img src="./ocean_temperature_trends.png" alt="Deep Sea">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Panel -->
+    <div class="panel bottom-panel" id="bottomPanel">
+        <div class="panel-trigger" onclick="togglePanel('bottom')">
+            <svg class="icon" viewBox="0 0 24 24">
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+            </svg>
+            Legend
+        </div>
+        <div class="legend-container">
+            <h3 class="legend-title">Temperature Map</h3>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f32404;"></div>
+                    <span class="legend-text">+3°C</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ea6c0c;"></div>
+                    <span class="legend-text">+2°C</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f5c56c;"></div>
+                    <span class="legend-text">+1°C</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f3e491;"></div>
+                    <span class="legend-text">0°C</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #87e3ef;"></div>
+                    <span class="legend-text">-1°C</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #56a0f0;"></div>
+                    <span class="legend-text">-2°C</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #0557f0;"></div>
+                    <span class="legend-text">-3°C</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Panel toggle functionality
+        function togglePanel(side) {
+            const panel = document.getElementById(side + 'Panel');
+            panel.classList.toggle('active');
+            
+            // Close other panels when opening a new one
+            const panels = ['left', 'right', 'bottom'];
+            panels.forEach(p => {
+                if (p !== side) {
+                    document.getElementById(p + 'Panel').classList.remove('active');
+                }
+            });
+        }
+
+        // Three.js 3D Globe Setup
+        let scene, camera, renderer, globe, isMouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let targetRotationX = 0, targetRotationY = 0;
+        let currentTextureType = 'texture1';
+        let textures = {};
+
+        // Define your texture URLs here - REPLACE THESE WITH YOUR ACTUAL URLs
+        const textureUrls = {
+            texture1: './globe_texture_month1.png',
+            texture2: './globe_texture_month2.png',
+            texture3: './globe_texture_month3.png'  
+        };
+
+        function init3DGlobe() {
+            const container = document.getElementById('globe-container');
+            const loading = container.querySelector('.loading');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(
+                75, 
+                container.clientWidth / container.clientHeight, 
+                0.1, 
+                1000
+            );
+            camera.position.z = 2.5;
+
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setClearColor(0x000000, 0);
+            container.appendChild(renderer.domElement);
+
+            // Create sphere geometry with higher resolution for better texture mapping
+            const geometry = new THREE.SphereGeometry(1, 128, 128);
+            
+            // Create a placeholder material initially
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x004d7a,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            // Create the globe mesh
+            globe = new THREE.Mesh(geometry, material);
+            scene.add(globe);
+
+            // Load all textures
+            loadAllTextures();
+
+            // Hide loading indicator since globe is now visible
+            loading.style.display = 'none';
+
+            // NO LIGHT SOURCES - Globe will appear flat without lighting effects
+
+            // Mouse interaction
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('mouseleave', onMouseUp);
+
+            // Touch interaction
+            renderer.domElement.addEventListener('touchstart', onTouchStart);
+            renderer.domElement.addEventListener('touchmove', onTouchMove);
+            renderer.domElement.addEventListener('touchend', onTouchEnd);
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+
+            // Setup globe selector
+            setupGlobeSelector();
+
+            // Start animation
+            animate();
+        }
+
+        function loadAllTextures() {
+            const textureLoader = new THREE.TextureLoader();
+            
+            // Load each texture
+            Object.keys(textureUrls).forEach(textureKey => {
+                textureLoader.load(
+                    textureUrls[textureKey],
+                    function(texture) {
+                        // Fix texture wrapping and mapping
+                        texture.wrapS = THREE.RepeatWrapping;
+                        texture.wrapT = THREE.RepeatWrapping;
+                        texture.repeat.set(1, 1);
+                        texture.minFilter = THREE.LinearFilter;
+                        texture.magFilter = THREE.LinearFilter;
+                        texture.generateMipmaps = false;
+                        
+                        // Store the texture
+                        textures[textureKey] = texture;
+                        
+                        // If this is the currently selected texture, apply it
+                        if (currentTextureType === textureKey) {
+                            applyTexture(textureKey);
+                        }
+                        
+                        console.log(`${textureKey} texture loaded successfully`);
+                    },
+                    function(progress) {
+                        console.log(`Loading ${textureKey}:`, (progress.loaded / progress.total * 100) + '%');
+                    },
+                    function(error) {
+                        console.log(`${textureKey} texture failed to load:`, error);
+                        // Create a fallback colored texture
+                        createFallbackTexture(textureKey);
+                    }
+                );
+            });
+        }
+
+        function createFallbackTexture(textureKey) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const context = canvas.getContext('2d');
+
+            // Create different colors for different textures
+            const colors = {
+                texture1: ['#FFD700', '#4169E1'], // Gold and Blue for Abstract
+                texture2: ['#228B22', '#8B4513'], // Green and Brown for World Map
+                texture3: ['#00CED1', '#000080']  // Dark Turquoise and Navy for Ocean
+            };
+
+            const [color1, color2] = colors[textureKey];
+            
+            // Create gradient
+            const gradient = context.createLinearGradient(0, 0, 512, 256);
+            gradient.addColorStop(0, color1);
+            gradient.addColorStop(1, color2);
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 512, 256);
+
+            // Add some texture
+            for (let i = 0; i < 20; i++) {
+                context.strokeStyle = `rgba(255, 255, 255, ${Math.random() * 0.2})`;
+                context.lineWidth = Math.random() * 2 + 1;
+                context.beginPath();
+                context.moveTo(Math.random() * 512, Math.random() * 256);
+                context.lineTo(Math.random() * 512, Math.random() * 256);
+                context.stroke();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            textures[textureKey] = texture;
+            
+            // If this is the currently selected texture, apply it
+            if (currentTextureType === textureKey) {
+                applyTexture(textureKey);
+            }
+        }
+
+        function applyTexture(textureType) {
+            if (!globe || !textures[textureType]) return;
+            
+            currentTextureType = textureType;
+            globe.material.map = textures[textureType];
+            globe.material.needsUpdate = true;
+            globe.material.color = new THREE.Color(0xffffff);
+            globe.material.opacity = 1.0;
+            globe.material.transparent = false;
+            globe.material.needsUpdate = true;
+        }
+
+        function setupGlobeSelector() {
+            const globeSelect = document.getElementById('globeSelect');
+            
+            globeSelect.addEventListener('change', function() {
+                const selectedGlobe = this.value;
+                applyTexture(selectedGlobe);
+            });
+        }
+
+        function onMouseDown(event) {
+            isMouseDown = true;
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseMove(event) {
+            if (!isMouseDown) return;
+
+            const deltaX = event.clientX - mouseX;
+            const deltaY = event.clientY - mouseY;
+
+            targetRotationY += deltaX * 0.01;
+            targetRotationX += deltaY * 0.01;
+
+            mouseX = event.clientX;
+            mouseY = event.clientY;
+        }
+
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+
+        function onTouchStart(event) {
+            if (event.touches.length === 1) {
+                isMouseDown = true;
+                mouseX = event.touches[0].clientX;
+                mouseY = event.touches[0].clientY;
+            }
+        }
+
+        function onTouchMove(event) {
+            if (!isMouseDown || event.touches.length !== 1) return;
+
+            const deltaX = event.touches[0].clientX - mouseX;
+            const deltaY = event.touches[0].clientY - mouseY;
+
+            targetRotationY += deltaX * 0.01;
+            targetRotationX += deltaY * 0.01;
+
+            mouseX = event.touches[0].clientX;
+            mouseY = event.touches[0].clientY;
+        }
+
+        function onTouchEnd() {
+            isMouseDown = false;
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('globe-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Auto-rotate when not interacting
+            if (!isMouseDown) {
+                targetRotationY += 0.005;
+            }
+
+            // Smooth rotation
+            globe.rotation.x += (targetRotationX - globe.rotation.x) * 0.05;
+            globe.rotation.y += (targetRotationY - globe.rotation.y) * 0.05;
+
+            renderer.render(scene, camera);
+        }
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case '1':
+                    togglePanel('left');
+                    break;
+                case '2':
+                    togglePanel('right');
+                    break;
+                case '3':
+                    togglePanel('bottom');
+                    break;
+                case 'Escape':
+                    // Close all panels
+                    ['left', 'right', 'bottom'].forEach(side => {
+                        document.getElementById(side + 'Panel').classList.remove('active');
+                    });
+                    break;
+            }
+        });
+
+        // Initialize 3D globe when page loads
+        window.addEventListener('load', () => {
+            init3DGlobe();
+        });
+    </script>
+</body>
+</html>
