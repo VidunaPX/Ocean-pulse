@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "empress": "^0.0.2",
+    "express": "^5.1.0",
+    "node": "^24.9.0",
+    "plotly": "^1.0.6",
+    "three": "^0.180.0"
+  }
+}
