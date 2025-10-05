@@ -1,0 +1,14 @@
+import time
+import subprocess
+
+subprocess.run(["python", "src/pred_to_globe_texture.py"])
+subprocess.run(["python", "src/oceanpulse_main.py"])
+subprocess.run(["python", "src/planetary_dashboard.py"])
+subprocess.run(["node", "Frontend/app.js"], shell=True)
+
+while True:
+    # Run a Python program
+    subprocess.run(["python", "src/planetary_dashboard.py"])
+
+    # Wait 30 minutes
+    time.sleep(1800)
